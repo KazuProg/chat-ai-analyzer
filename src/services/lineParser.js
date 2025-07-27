@@ -78,9 +78,6 @@ class LineDataParser {
         LIMIT ${limit}
       `;
 
-      console.log(`parseLineEvents クエリ実行: ${limit}件取得`);
-      console.log(`SQL: ${query}`);
-
       this.db.all(query, (err, rows) => {
         if (err) {
           reject(err);
@@ -123,16 +120,6 @@ class LineDataParser {
           }
         });
 
-        console.log(`parseLineEvents 解析済みメッセージ数: ${messages.length}`);
-        if (messages.length > 0) {
-          console.log("解析済みメッセージ例:", {
-            id: messages[0].id,
-            text: messages[0].text?.substring(0, 50) + "...",
-            timestamp: messages[0].timestamp,
-            senderId: messages[0].senderId,
-          });
-        }
-
         resolve({
           messages,
           participants: Array.from(participants),
@@ -158,9 +145,6 @@ class LineDataParser {
         ORDER BY id DESC 
         LIMIT ${limit}
       `;
-
-      console.log(`getRecentMessages クエリ実行: ${limit}件取得`);
-      console.log(`SQL: ${query}`);
 
       this.db.all(query, (err, rows) => {
         if (err) {
@@ -205,18 +189,6 @@ class LineDataParser {
 
         // 時系列順に並び替え（古い順）
         messages.sort((a, b) => a.timestamp - b.timestamp);
-
-        console.log(
-          `getRecentMessages 解析済みメッセージ数: ${messages.length}`
-        );
-        if (messages.length > 0) {
-          console.log("解析済みメッセージ例:", {
-            id: messages[0].id,
-            text: messages[0].text?.substring(0, 50) + "...",
-            timestamp: messages[0].timestamp,
-            senderId: messages[0].senderId,
-          });
-        }
 
         resolve({
           messages,

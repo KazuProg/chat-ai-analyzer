@@ -30,11 +30,6 @@ async function initializeDatabase() {
     lineParser = new LineDataParser();
     await lineParser.openDatabase(dbPath);
 
-    // データベース構造を解析
-    const structure = await lineParser.analyzeStructure();
-    console.log("データベースに接続しました");
-    console.log("データベース構造:", structure);
-
     return true;
   } catch (error) {
     console.error("データベース初期化エラー:", error);
@@ -183,38 +178,19 @@ router.post("/ai/ask", async (req, res) => {
       // 最近のメッセージを取得（時系列順）
       const data = await lineParser.getRecentMessages(50);
       messages = data.messages;
-      console.log(`最近のメッセージ取得: ${messages.length}件`);
     } else if (context === "monthly") {
       const endDate = new Date();
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 1);
       messages = await lineParser.getMessagesByDateRange(startDate, endDate);
-      console.log(`月間メッセージ取得: ${messages.length}件`);
     } else {
       // 全期間のメッセージを取得
       const data = await lineParser.parseLineEvents(200);
       messages = data.messages;
-      console.log(`全期間メッセージ取得: ${messages.length}件`);
     }
 
-    // デバッグ: メッセージの詳細を出力
-    console.log(`分析対象メッセージ数: ${messages.length}`);
-    if (messages.length > 0) {
-      console.log("最初のメッセージ:", {
-        id: messages[0].id,
-        text: messages[0].text?.substring(0, 100) + "...",
-        timestamp: messages[0].timestamp,
-        senderId: messages[0].senderId,
-      });
-      console.log("最後のメッセージ:", {
-        id: messages[messages.length - 1].id,
-        text: messages[messages.length - 1].text?.substring(0, 100) + "...",
-        timestamp: messages[messages.length - 1].timestamp,
-        senderId: messages[messages.length - 1].senderId,
-      });
-    } else {
-      console.log("メッセージが取得できませんでした");
-    }
+    // クライアントから送信された質問文を出力
+    console.log(`\n質問: ${question}`);
 
     let answer;
     let confidence = 0.85;
@@ -226,7 +202,7 @@ router.post("/ai/ask", async (req, res) => {
       answer = await geminiService.generateAnswer(question, messages);
     } catch (error) {
       console.log(
-        "Gemini APIが利用できないため、統計分析を使用します:",
+        "\nGemini APIが利用できないため、統計分析を使用します:",
         error.message
       );
 
@@ -247,7 +223,7 @@ router.post("/ai/ask", async (req, res) => {
       useGemini: useGemini,
     });
   } catch (error) {
-    console.error("AI質問エラー:", error);
+    console.error("\nAI質問エラー:", error);
     res.status(500).json({
       success: false,
       error: "AI回答の生成中にエラーが発生しました",
