@@ -5,36 +5,7 @@ let questionHistory = [];
 const questionInput = document.getElementById("questionInput");
 const contextSelect = document.getElementById("contextSelect");
 const askButton = document.getElementById("askButton");
-const answerLoading = document.getElementById("answerLoading");
-const answerText = document.getElementById("answerText");
-
-// セクション要素
-const questionSection = document.getElementById("questionSection");
-const answerSection = document.getElementById("answerSection");
-const historySection = document.getElementById("historySection");
-
-// モーダル要素
-const errorModal = document.getElementById("errorModal");
-const errorMessage = document.getElementById("errorMessage");
-
-// 初期化
-document.addEventListener("DOMContentLoaded", function () {
-  setupEventListeners();
-});
-
-// イベントリスナーの設定
-function setupEventListeners() {
-  // 質問送信
-  askButton.addEventListener("click", askQuestion);
-
-  // Enterキーで質問送信
-  questionInput.addEventListener("keypress", function (e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      askQuestion();
-    }
-  });
-}
+const chatHistory = document.getElementById("chatHistory");
 
 // 質問送信
 async function askQuestion() {
@@ -46,17 +17,15 @@ async function askQuestion() {
     return;
   }
 
+  // ユーザーメッセージを追加
+  addUserMessage(question);
+
   // ボタンを無効化
   askButton.disabled = true;
-  askButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+  askButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-  // 回答セクションを表示
-  answerSection.style.display = "block";
-  historySection.style.display = "block";
-
-  // ローディング表示
-  answerLoading.style.display = "block";
-  answerText.style.display = "none";
+  // ローディングメッセージを追加
+  const loadingMessageId = addLoadingMessage();
 
   try {
     const response = await fetch("/api/ai/ask", {
@@ -72,110 +41,221 @@ async function askQuestion() {
 
     const result = await response.json();
 
+    // ローディングメッセージを削除
+    removeLoadingMessage(loadingMessageId);
+
     if (result.success) {
-      // 回答を表示
-      answerText.textContent = result.answer;
-      answerText.style.display = "block";
-      answerLoading.style.display = "none";
-
-      // 履歴に追加
-      addToHistory(question, result.answer, result.timestamp);
-
-      // 質問をクリア
-      questionInput.value = "";
+      // AI回答を追加
+      addAIMessage(result.answer, result.useGemini);
     } else {
       throw new Error(result.error);
     }
+
+    // 質問をクリア
+    questionInput.value = "";
+
+    // 入力フィールドをリセット
+    resetInputField();
   } catch (error) {
-    showError("AI回答の生成に失敗しました: " + error.message);
-    answerLoading.style.display = "none";
+    // ローディングメッセージを削除
+    removeLoadingMessage(loadingMessageId);
+
+    // エラーメッセージを追加
+    addErrorMessage("AI回答の生成に失敗しました: " + error.message);
   } finally {
     // ボタンを有効化
     askButton.disabled = false;
-    askButton.innerHTML = '<i class="fas fa-paper-plane"></i> 質問を送信';
+    askButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
   }
 }
 
-// 履歴に追加
-function addToHistory(question, answer, timestamp) {
-  const historyItem = {
-    question: question,
-    answer: answer,
-    timestamp: timestamp,
-  };
+// ユーザーメッセージを追加
+function addUserMessage(text) {
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "message user-message";
 
-  questionHistory.unshift(historyItem);
-
-  // 履歴を10件まで保持
-  if (questionHistory.length > 10) {
-    questionHistory = questionHistory.slice(0, 10);
-  }
-
-  updateHistoryDisplay();
-}
-
-// 履歴表示の更新
-function updateHistoryDisplay() {
-  const historyList = document.getElementById("historyList");
-  historyList.innerHTML = "";
-
-  questionHistory.forEach((item, index) => {
-    const historyItem = document.createElement("div");
-    historyItem.className = "history-item";
-    historyItem.onclick = () => showHistoryAnswer(item);
-
-    const date = new Date(item.timestamp).toLocaleString("ja-JP");
-
-    historyItem.innerHTML = `
-            <div class="history-question">${item.question}</div>
-            <div class="history-timestamp">${date}</div>
-        `;
-
-    historyList.appendChild(historyItem);
+  const timestamp = new Date().toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
   });
+
+  messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-text">${escapeHtml(text)}</div>
+            <div class="message-time">${timestamp}</div>
+        </div>
+    `;
+
+  chatHistory.appendChild(messageDiv);
+  scrollToBottom();
 }
 
-// 履歴の回答を表示
-function showHistoryAnswer(item) {
-  answerText.textContent = item.answer;
-  answerText.style.display = "block";
-  answerLoading.style.display = "none";
+// AIメッセージを追加
+function addAIMessage(text, useGemini = true) {
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "message ai-message";
+
+  const timestamp = new Date().toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const icon = useGemini ? "fas fa-robot" : "fas fa-chart-bar";
+  const source = useGemini ? "AI分析" : "統計分析";
+
+  messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="${icon}"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-text">
+                ${formatMessageText(text)}
+                <div style="margin-top: 8px; font-size: 0.8rem; opacity: 0.7;">
+                    <i class="fas fa-info-circle"></i> ${source}
+                </div>
+            </div>
+            <div class="message-time">${timestamp}</div>
+        </div>
+    `;
+
+  chatHistory.appendChild(messageDiv);
+  scrollToBottom();
+}
+
+// ローディングメッセージを追加
+function addLoadingMessage() {
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "message ai-message";
+  messageDiv.id = "loading-message-" + Date.now();
+
+  messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="fas fa-robot"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-text">
+                <div class="loading-message">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    AIが分析中
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+  chatHistory.appendChild(messageDiv);
+  scrollToBottom();
+
+  return messageDiv.id;
+}
+
+// ローディングメッセージを削除
+function removeLoadingMessage(messageId) {
+  const loadingMessage = document.getElementById(messageId);
+  if (loadingMessage) {
+    loadingMessage.remove();
+  }
+}
+
+// エラーメッセージを追加
+function addErrorMessage(text) {
+  const messageDiv = document.createElement("div");
+  messageDiv.className = "message ai-message";
+
+  const timestamp = new Date().toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  messageDiv.innerHTML = `
+        <div class="message-avatar">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-text error-message">
+                <i class="fas fa-exclamation-circle"></i>
+                ${escapeHtml(text)}
+            </div>
+            <div class="message-time">${timestamp}</div>
+        </div>
+    `;
+
+  chatHistory.appendChild(messageDiv);
+  scrollToBottom();
+}
+
+// メッセージテキストをフォーマット
+function formatMessageText(text) {
+  // 改行を<br>に変換
+  text = text.replace(/\n/g, "<br>");
+
+  // リスト形式の改善
+  text = text.replace(/^(\d+\.|\*|\-)\s+/gm, "<br>$1 ");
+
+  return text;
+}
+
+// HTMLエスケープ
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// チャット履歴を最下部にスクロール
+function scrollToBottom() {
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+// 入力フィールドをリセット
+function resetInputField() {
+  questionInput.style.height = "auto";
 }
 
 // エラー表示
 function showError(message) {
-  errorMessage.textContent = message;
-  errorModal.style.display = "block";
+  addErrorMessage(message);
 }
 
-// 成功メッセージ表示
-function showSuccess(message) {
-  // 簡単な成功メッセージ（後でトースト通知に変更可能）
-  console.log("成功:", message);
-}
+// イベントリスナーの設定
+document.addEventListener("DOMContentLoaded", function () {
+  // Enterキーで送信
+  questionInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      askQuestion();
+    }
+  });
 
-// モーダルを閉じる
-function closeModal() {
-  errorModal.style.display = "none";
-}
+  // テキストエリアの自動リサイズ
+  questionInput.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  });
 
-// モーダル外クリックで閉じる
-window.onclick = function (event) {
-  if (event.target === errorModal) {
-    closeModal();
-  }
-};
+  // 初期フォーカス
+  questionInput.focus();
+});
 
-// キーボードショートカット
-document.addEventListener("keydown", function (e) {
-  // Ctrl+Enter で質問送信
-  if (e.ctrlKey && e.key === "Enter") {
-    e.preventDefault();
-    askQuestion();
-  }
+// エラーハンドリング
+window.addEventListener("error", function (e) {
+  console.error("JavaScript error:", e.error);
+  addErrorMessage(
+    "予期しないエラーが発生しました。ページを再読み込みしてください。"
+  );
+});
 
-  // Escape でモーダルを閉じる
-  if (e.key === "Escape") {
-    closeModal();
-  }
+// ネットワークエラーハンドリング
+window.addEventListener("unhandledrejection", function (e) {
+  console.error("Unhandled promise rejection:", e.reason);
+  addErrorMessage(
+    "ネットワークエラーが発生しました。インターネット接続を確認してください。"
+  );
 });
