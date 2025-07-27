@@ -189,8 +189,9 @@ router.post("/ai/ask", async (req, res) => {
       messages = data.messages;
     }
 
-    // クライアントから送信された質問文を出力
+    // クライアントから送信された質問文と対象メッセージ数を出力
     console.log(`\n質問: ${question}`);
+    console.log(`対象メッセージ数: ${messages.length}件`);
 
     let answer;
     let confidence = 0.85;
