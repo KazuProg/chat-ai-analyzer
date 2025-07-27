@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LINEグループ会話分析AIツール</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <!-- ヘッダー -->
+      <header class="header">
+        <h1><i class="fas fa-robot"></i> LINEグループ会話分析AIツール</h1>
+        <p>LINEの会話データをAIで分析して、グループの特徴を理解しましょう</p>
+      </header>
+
+      <!-- メインコンテンツ -->
+      <main class="main-content">
+        <!-- 質問セクション -->
+        <section class="question-section" id="questionSection">
+          <div class="card">
+            <h2><i class="fas fa-question-circle"></i> AIに質問</h2>
+            <div class="question-form">
+              <div class="form-group">
+                <label for="questionInput">質問を入力してください：</label>
+                <textarea
+                  id="questionInput"
+                  placeholder="例：このグループで最も話されている話題は何ですか？"
+                  rows="3"
+                ></textarea>
+              </div>
+              <div class="form-group">
+                <label for="contextSelect">分析範囲：</label>
+                <select id="contextSelect">
+                  <option value="recent">最近のメッセージ（50件）</option>
+                  <option value="monthly">過去1ヶ月</option>
+                  <option value="all">全期間（200件）</option>
+                </select>
+              </div>
+              <button
+                class="btn btn-primary"
+                id="askButton"
+                onclick="askQuestion()"
+              >
+                <i class="fas fa-paper-plane"></i> 質問を送信
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 回答セクション -->
+        <section class="answer-section" id="answerSection">
+          <div class="card">
+            <h2><i class="fas fa-brain"></i> AI回答</h2>
+            <div class="answer-content" id="answerContent">
+              <div class="loading" id="answerLoading" style="display: none">
+                <div class="spinner"></div>
+                <p>AIが分析中...</p>
+              </div>
+              <div class="answer-text" id="answerText"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 質問履歴セクション -->
+        <section class="history-section" id="historySection">
+          <div class="card">
+            <h2><i class="fas fa-history"></i> 質問履歴</h2>
+            <div class="history-list" id="historyList"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- フッター -->
+      <footer class="footer">
+        <p>&copy; 2024 LINEグループ会話分析AIツール</p>
+      </footer>
+    </div>
+
+    <!-- モーダル -->
+    <div class="modal" id="errorModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3><i class="fas fa-exclamation-triangle"></i> エラー</h3>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="errorMessage"></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeModal()">
+            閉じる
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/app.js"></script>
+  </body>
+</html>
