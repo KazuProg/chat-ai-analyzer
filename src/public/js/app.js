@@ -7,6 +7,23 @@ const contextSelect = document.getElementById("contextSelect");
 const askButton = document.getElementById("askButton");
 const chatHistory = document.getElementById("chatHistory");
 
+// Markdownパーサーの設定
+marked.setOptions({
+  breaks: true, // 改行を<br>に変換
+  gfm: true, // GitHub Flavored Markdown
+  sanitize: false, // HTMLタグを許可
+  highlight: function (code, lang) {
+    if (lang && Prism.languages[lang]) {
+      try {
+        return Prism.highlight(code, Prism.languages[lang], lang);
+      } catch (err) {
+        console.warn("Prism highlight error:", err);
+      }
+    }
+    return code;
+  },
+});
+
 // 質問送信
 async function askQuestion() {
   const question = questionInput.value.trim();
@@ -106,13 +123,16 @@ function addAIMessage(text, useGemini = true) {
   const icon = useGemini ? "fas fa-robot" : "fas fa-chart-bar";
   const source = useGemini ? "AI分析" : "統計分析";
 
+  // MarkdownをHTMLに変換
+  const markdownHtml = marked.parse(text);
+
   messageDiv.innerHTML = `
         <div class="message-avatar">
             <i class="${icon}"></i>
         </div>
         <div class="message-content">
-            <div class="message-text">
-                ${formatMessageText(text)}
+            <div class="message-text markdown-content">
+                ${markdownHtml}
                 <div style="margin-top: 8px; font-size: 0.8rem; opacity: 0.7;">
                     <i class="fas fa-info-circle"></i> ${source}
                 </div>
@@ -122,7 +142,35 @@ function addAIMessage(text, useGemini = true) {
     `;
 
   chatHistory.appendChild(messageDiv);
+
+  // シンタックスハイライトを適用
+  applySyntaxHighlighting(messageDiv);
+
   scrollToBottom();
+}
+
+// シンタックスハイライトを適用
+function applySyntaxHighlighting(messageDiv) {
+  const codeBlocks = messageDiv.querySelectorAll("pre code");
+  codeBlocks.forEach((block) => {
+    if (block.className) {
+      // 既にハイライトが適用されている場合はスキップ
+      return;
+    }
+
+    const language = block.className.replace("language-", "");
+    if (language && Prism.languages[language]) {
+      try {
+        block.innerHTML = Prism.highlight(
+          block.textContent,
+          Prism.languages[language],
+          language
+        );
+      } catch (err) {
+        console.warn("Prism highlight error:", err);
+      }
+    }
+  });
 }
 
 // ローディングメッセージを追加
@@ -189,17 +237,6 @@ function addErrorMessage(text) {
 
   chatHistory.appendChild(messageDiv);
   scrollToBottom();
-}
-
-// メッセージテキストをフォーマット
-function formatMessageText(text) {
-  // 改行を<br>に変換
-  text = text.replace(/\n/g, "<br>");
-
-  // リスト形式の改善
-  text = text.replace(/^(\d+\.|\*|\-)\s+/gm, "<br>$1 ");
-
-  return text;
 }
 
 // HTMLエスケープ

@@ -10,21 +10,9 @@ class GeminiService {
     this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   }
 
-  /**
-   * LINE会話データを基に質問に回答を生成
-   * @param {string} question - ユーザーの質問
-   * @param {Array} messages - LINEメッセージ配列
-   * @returns {Promise<string>} - AI回答
-   */
   async generateAnswer(question, messages) {
     try {
-      // メッセージデータをテキスト形式に変換
-      const conversationText = this.formatMessagesForPrompt(messages);
-
-      // プロンプトを構築
-      const prompt = this.buildPrompt(question, conversationText);
-
-      // Gemini APIにリクエスト
+      const prompt = this.buildPrompt(question, messages);
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
 
@@ -44,163 +32,282 @@ class GeminiService {
     }
   }
 
-  /**
-   * メッセージデータをプロンプト用のテキスト形式に変換
-   * @param {Array} messages - メッセージ配列
-   * @returns {string} - フォーマットされたテキスト
-   */
   formatMessagesForPrompt(messages) {
     if (!messages || messages.length === 0) {
       return "会話データがありません。";
     }
 
-    // メッセージを時系列順にソート
-    const sortedMessages = messages.sort((a, b) => a.timestamp - b.timestamp);
-
-    // テキスト形式に変換
-    const formattedMessages = sortedMessages.map((msg, index) => {
-      const date = new Date(msg.timestamp);
-      const timeStr = date.toLocaleString("ja-JP");
-
-      return `${index + 1}. [${timeStr}] ユーザー${msg.senderId}: ${msg.text}`;
+    const formattedMessages = messages.map((msg) => {
+      const timestamp = new Date(msg.timestamp).toLocaleString("ja-JP");
+      return `**${msg.senderId}** (${timestamp}): ${msg.text}`;
     });
 
-    return formattedMessages.join("\n");
+    return formattedMessages.join("\n\n");
   }
 
-  /**
-   * AIプロンプトを構築
-   * @param {string} question - ユーザーの質問
-   * @param {string} conversationText - 会話テキスト
-   * @returns {string} - 構築されたプロンプト
-   */
-  buildPrompt(question, conversationText) {
-    return `
-あなたはLINEグループの会話データを分析するAIアシスタントです。
-以下の会話データを基に、ユーザーの質問に回答してください。
+  buildPrompt(question, messages) {
+    const formattedMessages = this.formatMessagesForPrompt(messages);
+    const messageCount = messages.length;
 
-【会話データ】
-${conversationText}
+    return `あなたはLINEグループの会話データを分析するAIアシスタントです。
 
-【質問】
+## 分析対象データ
+- メッセージ数: ${messageCount}件
+- 期間: ${this.getDateRange(messages)}
+
+## 会話データ
+\`\`\`
+${formattedMessages}
+\`\`\`
+
+## ユーザーの質問
 ${question}
 
-【回答の指示】
-- 会話データに基づいて具体的に回答してください
-- データが不足している場合は、その旨を明記してください
-- 統計情報がある場合は、数値も含めて回答してください
-- 日本語で自然な文章で回答してください
-- 回答は簡潔で分かりやすくしてください
+## 回答形式
+以下の形式でMarkdownを使用して回答してください：
 
-【回答】
-`;
+### 📊 分析結果
+- 主要な発見や洞察を箇条書きで
+- データに基づく具体的な数値や割合
+
+### 🔍 詳細分析
+- より深い分析や背景情報
+- パターンや傾向の説明
+
+### 💡 考察
+- 分析結果の解釈
+- グループの特徴や傾向
+
+### 📈 統計情報（該当する場合）
+| 項目 | 数値 |
+|------|------|
+| 総メッセージ数 | ${messageCount} |
+| 参加者数 | ${this.getUniqueParticipants(messages).length} |
+
+## 注意事項
+- データに基づく客観的な分析を行ってください
+- 推測ではなく、実際のデータから読み取れる情報のみを述べてください
+- 日本語で回答してください
+- Markdown形式を使用して見やすく構造化してください
+- 絵文字を適切に使用して視覚的に分かりやすくしてください`;
   }
 
-  /**
-   * 統計情報を基にした分析回答を生成
-   * @param {Object} statistics - 統計情報
-   * @returns {Promise<string>} - 分析結果
-   */
-  async generateStatisticsAnalysis(statistics) {
-    try {
-      const prompt = `
-以下のLINEグループの統計情報を分析してください：
-
-【統計情報】
-- 総メッセージ数: ${statistics.totalMessages}
-- 参加者数: ${statistics.uniqueParticipants}
-- 期間: ${statistics.dateRange.start} から ${statistics.dateRange.end}
-- 最もアクティブなユーザー: ${statistics.mostActiveUser}
-- 1日あたりの平均メッセージ数: ${statistics.averageMessagesPerDay}
-
-【分析の指示】
-- このグループの特徴を分析してください
-- 活動レベルについて評価してください
-- 改善点があれば提案してください
-- 日本語で自然な文章で回答してください
-
-【分析結果】
-`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-
-      return response.text();
-    } catch (error) {
-      console.error("統計分析エラー:", error);
-      throw new Error("統計分析の生成に失敗しました");
+  getDateRange(messages) {
+    if (!messages || messages.length === 0) {
+      return "データなし";
     }
+
+    const timestamps = messages.map((msg) => msg.timestamp);
+    const startDate = new Date(Math.min(...timestamps));
+    const endDate = new Date(Math.max(...timestamps));
+
+    return `${startDate.toLocaleDateString(
+      "ja-JP"
+    )} ～ ${endDate.toLocaleDateString("ja-JP")}`;
   }
 
-  /**
-   * 特定の話題に関する分析を生成
-   * @param {string} topic - 分析したい話題
-   * @param {Array} messages - メッセージ配列
-   * @returns {Promise<string>} - 話題分析結果
-   */
-  async generateTopicAnalysis(topic, messages) {
-    try {
-      const conversationText = this.formatMessagesForPrompt(messages);
-
-      const prompt = `
-以下の会話データから「${topic}」に関する分析を行ってください：
-
-【会話データ】
-${conversationText}
-
-【分析の指示】
-- 「${topic}」に関する言及を抽出してください
-- どのような文脈で話題に上がっているか分析してください
-- 参加者の反応や意見を分析してください
-- 話題の頻度や重要度を評価してください
-- 日本語で自然な文章で回答してください
-
-【分析結果】
-`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-
-      return response.text();
-    } catch (error) {
-      console.error("話題分析エラー:", error);
-      throw new Error("話題分析の生成に失敗しました");
-    }
+  getUniqueParticipants(messages) {
+    if (!messages) return [];
+    const participants = new Set();
+    messages.forEach((msg) => {
+      if (msg.senderId) {
+        participants.add(msg.senderId);
+      }
+    });
+    return Array.from(participants);
   }
 
-  /**
-   * 感情分析を生成
-   * @param {Array} messages - メッセージ配列
-   * @returns {Promise<string>} - 感情分析結果
-   */
-  async generateSentimentAnalysis(messages) {
-    try {
-      const conversationText = this.formatMessagesForPrompt(messages);
-
-      const prompt = `
-以下の会話データの感情分析を行ってください：
-
-【会話データ】
-${conversationText}
-
-【分析の指示】
-- 全体的な会話の雰囲気を分析してください
-- 感情的な表現や反応を分析してください
-- グループの関係性について分析してください
-- ポジティブ・ネガティブな要素を抽出してください
-- 日本語で自然な文章で回答してください
-
-【分析結果】
-`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-
-      return response.text();
-    } catch (error) {
-      console.error("感情分析エラー:", error);
-      throw new Error("感情分析の生成に失敗しました");
+  generateStatisticsAnalysis(messages) {
+    if (!messages || messages.length === 0) {
+      return "## 📊 統計分析\n\n会話データがありません。";
     }
+
+    const participants = this.getUniqueParticipants(messages);
+    const messageCount = messages.length;
+    const dateRange = this.getDateRange(messages);
+
+    return `## 📊 統計分析
+
+### 基本情報
+- **総メッセージ数**: ${messageCount}件
+- **参加者数**: ${participants.length}人
+- **分析期間**: ${dateRange}
+
+### 参加者別メッセージ数
+${this.generateParticipantStats(messages)}
+
+### 時間帯別分析
+${this.generateTimeStats(messages)}`;
+  }
+
+  generateParticipantStats(messages) {
+    const participantCounts = {};
+    messages.forEach((msg) => {
+      const sender = msg.senderId || "不明";
+      participantCounts[sender] = (participantCounts[sender] || 0) + 1;
+    });
+
+    const sortedParticipants = Object.entries(participantCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+
+    return sortedParticipants
+      .map(([participant, count]) => `- **${participant}**: ${count}件`)
+      .join("\n");
+  }
+
+  generateTimeStats(messages) {
+    const hourCounts = {};
+    messages.forEach((msg) => {
+      const hour = new Date(msg.timestamp).getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+
+    const mostActiveHour = Object.entries(hourCounts).sort(
+      ([, a], [, b]) => b - a
+    )[0];
+
+    return `- **最も活発な時間帯**: ${mostActiveHour[0]}時 (${mostActiveHour[1]}件)`;
+  }
+
+  generateTopicAnalysis(messages) {
+    if (!messages || messages.length === 0) {
+      return "## 🗣️ 話題分析\n\n会話データがありません。";
+    }
+
+    return `## 🗣️ 話題分析
+
+### 主要な話題
+${this.extractTopics(messages)}
+
+### 会話の特徴
+- グループの雰囲気や特徴を分析
+- 頻出するキーワードや表現
+- 参加者の関心分野`;
+  }
+
+  extractTopics(messages) {
+    // 簡単なキーワード抽出（実際の実装ではより高度な分析が必要）
+    const commonWords = ["ありがとう", "了解", "OK", "はい", "いいえ"];
+    const wordCounts = {};
+
+    messages.forEach((msg) => {
+      const text = msg.text || "";
+      commonWords.forEach((word) => {
+        if (text.includes(word)) {
+          wordCounts[word] = (wordCounts[word] || 0) + 1;
+        }
+      });
+    });
+
+    const topWords = Object.entries(wordCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3);
+
+    return topWords
+      .map(([word, count]) => `- **${word}**: ${count}回`)
+      .join("\n");
+  }
+
+  generateUserAnalysis(messages) {
+    if (!messages || messages.length === 0) {
+      return "## 👥 ユーザー分析\n\n会話データがありません。";
+    }
+
+    const participants = this.getUniqueParticipants(messages);
+    const participantCounts = {};
+
+    messages.forEach((msg) => {
+      const sender = msg.senderId || "不明";
+      participantCounts[sender] = (participantCounts[sender] || 0) + 1;
+    });
+
+    const sortedParticipants = Object.entries(participantCounts).sort(
+      ([, a], [, b]) => b - a
+    );
+
+    return `## 👥 ユーザー分析
+
+### 参加者別活動度
+${sortedParticipants
+  .map(
+    ([participant, count], index) =>
+      `${index + 1}. **${participant}**: ${count}件`
+  )
+  .join("\n")}
+
+### 分析結果
+- **最もアクティブな参加者**: ${sortedParticipants[0]?.[0] || "不明"}
+- **総参加者数**: ${participants.length}人
+- **平均メッセージ数**: ${Math.round(
+      messages.length / participants.length
+    )}件/人`;
+  }
+
+  generateTimeAnalysis(messages) {
+    if (!messages || messages.length === 0) {
+      return "## ⏰ 時間分析\n\n会話データがありません。";
+    }
+
+    const hourCounts = {};
+    const dayCounts = {};
+
+    messages.forEach((msg) => {
+      const date = new Date(msg.timestamp);
+      const hour = date.getHours();
+      const day = date.getDay();
+
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      dayCounts[day] = (dayCounts[day] || 0) + 1;
+    });
+
+    const mostActiveHour = Object.entries(hourCounts).sort(
+      ([, a], [, b]) => b - a
+    )[0];
+
+    const mostActiveDay = Object.entries(dayCounts).sort(
+      ([, a], [, b]) => b - a
+    )[0];
+
+    const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+
+    return `## ⏰ 時間分析
+
+### 時間帯別活動
+- **最も活発な時間帯**: ${mostActiveHour[0]}時 (${mostActiveHour[1]}件)
+- **最も活発な曜日**: ${dayNames[mostActiveDay[0]]}曜日 (${mostActiveDay[1]}件)
+
+### 活動パターン
+- グループの活動時間帯の特徴
+- 週間での活動パターン
+- 時間帯による話題の変化`;
+  }
+
+  generateGeneralAnalysis(messages) {
+    if (!messages || messages.length === 0) {
+      return "## �� 総合分析\n\n会話データがありません。";
+    }
+
+    const participants = this.getUniqueParticipants(messages);
+    const dateRange = this.getDateRange(messages);
+
+    return `## 📈 総合分析
+
+### 基本統計
+| 項目 | 数値 |
+|------|------|
+| 総メッセージ数 | ${messages.length} |
+| 参加者数 | ${participants.length} |
+| 分析期間 | ${dateRange} |
+
+### グループの特徴
+- 活動レベルと参加者の関与度
+- 会話の質と内容の多様性
+- グループの雰囲気とコミュニケーションスタイル
+
+### 推奨事項
+- データに基づく改善提案
+- グループ活性化のためのアドバイス`;
   }
 }
 
