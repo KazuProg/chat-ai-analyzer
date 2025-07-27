@@ -300,7 +300,7 @@ class LineDataParser {
       const endTimestamp = endDate.getTime();
 
       this.db.all(
-        `SELECT id, event FROM events WHERE event LIKE '%"timestamp":%' AND event LIKE '%"type":"message"%' ORDER BY id`,
+        `SELECT id, event FROM events WHERE event LIKE '%"timestamp":%' AND event LIKE '%"type"%' ORDER BY id`,
         (err, rows) => {
           if (err) {
             reject(err);
