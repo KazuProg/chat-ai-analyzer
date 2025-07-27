@@ -266,4 +266,13 @@ router.get("/file/status", (req, res) => {
   });
 });
 
+// ヘルスチェックエンドポイント
+router.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    service: "chat-ai-analyzer",
+  });
+});
+
 module.exports = router;

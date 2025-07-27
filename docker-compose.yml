@@ -1,0 +1,33 @@
+services:
+  chat-ai-analyzer:
+    build: .
+    container_name: chat-ai-analyzer
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # 環境変数は.envファイルから読み込み
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # データベースパスは固定（ボリュームマウントで指定）
+      - LINE_DATABASE_PATH=/app/data/line_chat.db
+    volumes:
+      # データディレクトリをマウント（LINEデータベースファイル用）
+      - ./data:/app/data
+      # 環境変数ファイルをマウント（Gemini APIキーのみ）
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

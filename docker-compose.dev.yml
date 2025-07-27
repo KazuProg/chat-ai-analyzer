@@ -1,0 +1,25 @@
+services:
+  chat-ai-analyzer-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: chat-ai-analyzer-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # 環境変数は.envファイルから読み込み
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # データベースパスは固定（ボリュームマウントで指定）
+      - LINE_DATABASE_PATH=/app/data/line_chat.db
+    volumes:
+      # ソースコードをマウント（ホットリロード用）
+      - .:/app
+      - /app/node_modules
+      # データディレクトリをマウント
+      - ./data:/app/data
+      # 環境変数ファイルをマウント（Gemini APIキーのみ）
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    # 開発用なのでヘルスチェックは無効

@@ -1,0 +1,27 @@
+# Node.js 18 Alpine ベースイメージを使用（開発用）
+FROM node:18-alpine
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# package.json と package-lock.json をコピー
+COPY package*.json ./
+
+# 開発用依存関係も含めてインストール（package-lock.jsonがない場合はnpm installを使用）
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# ソースコードをコピー
+COPY . .
+
+# データディレクトリを作成
+RUN mkdir -p data
+
+# ポート3000を公開
+EXPOSE 3000
+
+# 環境変数を設定
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# 開発サーバーを起動（nodemon使用）
+CMD ["npm", "run", "dev"] 
