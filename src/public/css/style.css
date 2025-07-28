@@ -164,16 +164,7 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.message-time {
-    font-size: 0.75rem;
-    color: #6c757d;
-    margin-top: 4px;
-    text-align: right;
-}
 
-.user-message .message-time {
-    text-align: right;
-}
 
 /* Markdownコンテンツのスタイル */
 .markdown-content {

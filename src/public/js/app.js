@@ -91,18 +91,12 @@ function addUserMessage(text) {
   const messageDiv = document.createElement("div");
   messageDiv.className = "message user-message";
 
-  const timestamp = new Date().toLocaleTimeString("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
   messageDiv.innerHTML = `
         <div class="message-avatar">
             <i class="fas fa-user"></i>
         </div>
         <div class="message-content">
             <div class="message-text">${escapeHtml(text)}</div>
-            <div class="message-time">${timestamp}</div>
         </div>
     `;
 
@@ -114,11 +108,6 @@ function addUserMessage(text) {
 function addAIMessage(text, useGemini = true) {
   const messageDiv = document.createElement("div");
   messageDiv.className = "message ai-message";
-
-  const timestamp = new Date().toLocaleTimeString("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   const icon = useGemini ? "fas fa-robot" : "fas fa-chart-bar";
   const source = useGemini ? "AI分析" : "統計分析";
@@ -137,7 +126,6 @@ function addAIMessage(text, useGemini = true) {
                     <i class="fas fa-info-circle"></i> ${source}
                 </div>
             </div>
-            <div class="message-time">${timestamp}</div>
         </div>
     `;
 
