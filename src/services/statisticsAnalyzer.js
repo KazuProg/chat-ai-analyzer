@@ -33,12 +33,13 @@ class StatisticsAnalyzer {
     messages.forEach((message) => {
       // ユーザー別カウント
       const userId = message.senderId;
-      userCounts[userId] = (userCounts[userId] || 0) + 1;
+      const userName = message.userName || userId; // ユーザー名があれば使用、なければIDを使用
+      userCounts[userName] = (userCounts[userName] || 0) + 1;
 
-      if (!userMessages[userId]) {
-        userMessages[userId] = [];
+      if (!userMessages[userName]) {
+        userMessages[userName] = [];
       }
-      userMessages[userId].push(message.text);
+      userMessages[userName].push(message.text);
 
       // 時間帯分析
       const date = new Date(message.timestamp);

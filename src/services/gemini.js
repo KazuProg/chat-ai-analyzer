@@ -39,7 +39,8 @@ class GeminiService {
 
     const formattedMessages = messages.map((msg) => {
       const timestamp = new Date(msg.timestamp).toLocaleString("ja-JP");
-      return `**${msg.senderId}** (${timestamp}): ${msg.text}`;
+      const userName = msg.userName || msg.senderId; // ユーザー名があれば使用、なければIDを使用
+      return `**${userName}** (${timestamp}): ${msg.text}`;
     });
 
     return formattedMessages.join("\n\n");

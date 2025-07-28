@@ -281,6 +281,41 @@ class LineDataParser {
   }
 
   /**
+   * ユーザー情報を取得
+   * @returns {Promise<Object>} - ユーザーIDと名前のマッピング
+   */
+  async getUserMapping() {
+    return new Promise((resolve, reject) => {
+      this.db.all("SELECT id, name FROM user", (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        const userMapping = {};
+        rows.forEach((row) => {
+          userMapping[row.id] = row.name;
+        });
+
+        resolve(userMapping);
+      });
+    });
+  }
+
+  /**
+   * メッセージにユーザー名を追加
+   * @param {Array} messages - メッセージ配列
+   * @param {Object} userMapping - ユーザーIDと名前のマッピング
+   * @returns {Array} - ユーザー名が追加されたメッセージ配列
+   */
+  addUserNamesToMessages(messages, userMapping) {
+    return messages.map((message) => ({
+      ...message,
+      userName: userMapping[message.senderId] || message.senderId,
+    }));
+  }
+
+  /**
    * データベースを閉じる
    */
   closeDatabase() {

@@ -185,8 +185,17 @@ router.post("/ai/ask", async (req, res) => {
       messages = await lineParser.getMessagesByDateRange(startDate, endDate);
     } else {
       // 全期間のメッセージを取得
-      const data = await lineParser.parseLineEvents(200);
+      const data = await lineParser.parseLineEvents(1000);
       messages = data.messages;
+    }
+
+    // ユーザー情報を取得してメッセージに追加
+    try {
+      const userMapping = await lineParser.getUserMapping();
+      messages = lineParser.addUserNamesToMessages(messages, userMapping);
+    } catch (error) {
+      console.warn("ユーザー情報の取得に失敗しました:", error.message);
+      // ユーザー情報が取得できない場合は、senderIdをそのまま使用
     }
 
     // クライアントから送信された質問文と対象メッセージ数を出力

@@ -60,7 +60,9 @@ NODE_ENV=development
 
 ### 5. LINE データベースファイルの配置
 
-データベースファイルは以下の構造の `chat` テーブルを含む必要があります：
+データベースファイルは以下の構造のテーブルを含む必要があります：
+
+### chat テーブル
 
 ```sql
 CREATE TABLE "chat" (
@@ -71,6 +73,18 @@ CREATE TABLE "chat" (
 	PRIMARY KEY("id")
 );
 ```
+
+### user テーブル（オプション）
+
+```sql
+CREATE TABLE "user" (
+	"id"	TEXT,
+	"name"	TEXT,
+	PRIMARY KEY("id")
+);
+```
+
+**注意**: `user`テーブルが存在する場合、AI の応答でユーザー ID ではなくユーザー名が表示されます。
 
 ```bash
 mkdir -p data
@@ -119,6 +133,7 @@ cp your_line_chat.db ./data/line_chat.db
 
 - データベースファイルは必ず `./data/line_chat.db` という名前で配置してください
 - データベースには `chat` テーブルが含まれている必要があります
+- `user` テーブルはオプションですが、存在する場合 AI の応答でユーザー名が表示されます
 
 #### 4. Docker Compose で起動
 
