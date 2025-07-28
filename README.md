@@ -15,7 +15,7 @@ LINE のグループ会話データを AI で分析して、グループの特�
 - Node.js 16.0 以上
 - npm または yarn
 - Google Gemini API キー
-- LINE の SQLite データベースファイル
+- LINE の SQLite データベースファイル（chat テーブル形式）
 
 ## 🛠️ セットアップ
 
@@ -60,6 +60,18 @@ NODE_ENV=development
 
 ### 5. LINE データベースファイルの配置
 
+データベースファイルは以下の構造の `chat` テーブルを含む必要があります：
+
+```sql
+CREATE TABLE "chat" (
+	"id"	TEXT,
+	"timestamp"	TEXT,
+	"user"	TEXT,
+	"message"	TEXT,
+	PRIMARY KEY("id")
+);
+```
+
 ```bash
 mkdir -p data
 cp your_line_chat.db ./data/line_chat.db
@@ -103,7 +115,10 @@ mkdir -p data
 cp your_line_chat.db ./data/line_chat.db
 ```
 
-**重要**: データベースファイルは必ず `./data/line_chat.db` という名前で配置してください。
+**重要**:
+
+- データベースファイルは必ず `./data/line_chat.db` という名前で配置してください
+- データベースには `chat` テーブルが含まれている必要があります
 
 #### 4. Docker Compose で起動
 
@@ -167,7 +182,7 @@ npm start
 - 分析範囲を選択：
   - **最近のメッセージ（50 件）**: 最新の会話を分析
   - **過去 1 ヶ月**: 過去 1 ヶ月の会話を分析
-  - **全期間（200 件）**: 全期間の会話を分析
+  - **全期間（1000 件）**: 全期間の会話を分析
 
 ### 3. 質問を送信
 
@@ -306,7 +321,14 @@ chmod 644 ./data/line_chat.db
 **解決方法**:
 
 - LINE データベースファイルの形式を確認
+- `chat` テーブルが存在するか確認
 - サーバーログでデバッグ情報を確認
+
+```sql
+-- データベース構造の確認
+SELECT name FROM sqlite_master WHERE type='table';
+PRAGMA table_info(chat);
+```
 
 ## 📝 開発
 

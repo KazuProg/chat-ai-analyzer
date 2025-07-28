@@ -71,10 +71,9 @@ class LineDataParser {
     return new Promise((resolve, reject) => {
       // timestampでソートして最近のメッセージを取得
       const query = `
-        SELECT id, event 
-        FROM events 
-        WHERE event LIKE '%"timestamp"%'
-        ORDER BY CAST(JSON_EXTRACT(event, '$.timestamp') AS INTEGER) DESC 
+        SELECT id, timestamp, user, message 
+        FROM chat 
+        ORDER BY CAST(timestamp AS INTEGER) DESC 
         LIMIT ${limit}
       `;
 
@@ -86,44 +85,23 @@ class LineDataParser {
 
         const messages = [];
         const participants = new Set();
-        const groups = new Set();
 
         rows.forEach((row) => {
-          try {
-            const eventData = JSON.parse(row.event);
+          const message = {
+            id: row.id,
+            text: row.message,
+            timestamp: parseInt(row.timestamp),
+            senderId: row.user,
+          };
 
-            if (
-              eventData.type === "message" &&
-              eventData.message &&
-              eventData.message.type === "text"
-            ) {
-              const message = {
-                id: eventData.message.id,
-                text: eventData.message.text,
-                timestamp: eventData.timestamp,
-                senderId: eventData.source.userId,
-                groupId: eventData.source.groupId,
-                messageType: eventData.message.type,
-                quoteToken: eventData.message.quoteToken || null,
-              };
-
-              messages.push(message);
-
-              // 参加者とグループの情報を収集
-              participants.add(eventData.source.userId);
-              if (eventData.source.groupId) {
-                groups.add(eventData.source.groupId);
-              }
-            }
-          } catch (parseError) {
-            console.warn("JSON解析エラー:", parseError.message);
-          }
+          messages.push(message);
+          participants.add(row.user);
         });
 
         resolve({
           messages,
           participants: Array.from(participants),
-          groups: Array.from(groups),
+          groups: [], // 新しいテーブル構造ではグループ情報は含まれない
           totalEvents: rows.length,
         });
       });
@@ -139,10 +117,9 @@ class LineDataParser {
     return new Promise((resolve, reject) => {
       // 最近のメッセージを取得（timestampでソート）
       const query = `
-        SELECT id, event 
-        FROM events 
-        WHERE event LIKE '%"type"%' 
-        ORDER BY id DESC 
+        SELECT id, timestamp, user, message 
+        FROM chat 
+        ORDER BY CAST(timestamp AS INTEGER) DESC 
         LIMIT ${limit}
       `;
 
@@ -153,38 +130,17 @@ class LineDataParser {
         }
         const messages = [];
         const participants = new Set();
-        const groups = new Set();
 
         rows.forEach((row) => {
-          try {
-            const eventData = JSON.parse(row.event);
+          const message = {
+            id: row.id,
+            text: row.message,
+            timestamp: parseInt(row.timestamp),
+            senderId: row.user,
+          };
 
-            if (
-              eventData.type === "message" &&
-              eventData.message &&
-              eventData.message.type === "text"
-            ) {
-              const message = {
-                id: eventData.message.id,
-                text: eventData.message.text,
-                timestamp: eventData.timestamp,
-                senderId: eventData.source.userId,
-                groupId: eventData.source.groupId,
-                messageType: eventData.message.type,
-                quoteToken: eventData.message.quoteToken || null,
-              };
-
-              messages.push(message);
-
-              // 参加者とグループの情報を収集
-              participants.add(eventData.source.userId);
-              if (eventData.source.groupId) {
-                groups.add(eventData.source.groupId);
-              }
-            }
-          } catch (parseError) {
-            console.warn("JSON解析エラー:", parseError.message);
-          }
+          messages.push(message);
+          participants.add(row.user);
         });
 
         // 時系列順に並び替え（古い順）
@@ -193,7 +149,7 @@ class LineDataParser {
         resolve({
           messages,
           participants: Array.from(participants),
-          groups: Array.from(groups),
+          groups: [], // 新しいテーブル構造ではグループ情報は含まれない
           totalEvents: rows.length,
         });
       });
@@ -206,7 +162,7 @@ class LineDataParser {
    */
   async getStatistics() {
     return new Promise((resolve, reject) => {
-      this.db.get("SELECT COUNT(*) as total FROM events", (err, result) => {
+      this.db.get("SELECT COUNT(*) as total FROM chat", (err, result) => {
         if (err) {
           reject(err);
           return;
@@ -218,7 +174,7 @@ class LineDataParser {
               totalEvents: result.total,
               totalMessages: data.messages.length,
               uniqueParticipants: data.participants.length,
-              uniqueGroups: data.groups.length,
+              uniqueGroups: 0, // 新しいテーブル構造ではグループ情報は含まれない
               dateRange: this.getDateRange(data.messages),
               mostActiveUser: this.getMostActiveUser(data.messages),
               averageMessagesPerDay: this.calculateAverageMessagesPerDay(
@@ -300,7 +256,8 @@ class LineDataParser {
       const endTimestamp = endDate.getTime();
 
       this.db.all(
-        `SELECT id, event FROM events WHERE event LIKE '%"timestamp":%' AND event LIKE '%"type"%' ORDER BY id`,
+        `SELECT id, timestamp, user, message FROM chat WHERE CAST(timestamp AS INTEGER) >= ? AND CAST(timestamp AS INTEGER) <= ? ORDER BY CAST(timestamp AS INTEGER)`,
+        [startTimestamp, endTimestamp],
         (err, rows) => {
           if (err) {
             reject(err);
@@ -309,27 +266,12 @@ class LineDataParser {
 
           const messages = [];
           rows.forEach((row) => {
-            try {
-              const eventData = JSON.parse(row.event);
-
-              if (
-                eventData.type === "message" &&
-                eventData.message &&
-                eventData.message.type === "text" &&
-                eventData.timestamp >= startTimestamp &&
-                eventData.timestamp <= endTimestamp
-              ) {
-                messages.push({
-                  id: eventData.message.id,
-                  text: eventData.message.text,
-                  timestamp: eventData.timestamp,
-                  senderId: eventData.source.userId,
-                  groupId: eventData.source.groupId,
-                });
-              }
-            } catch (parseError) {
-              console.warn("JSON解析エラー:", parseError.message);
-            }
+            messages.push({
+              id: row.id,
+              text: row.message,
+              timestamp: parseInt(row.timestamp),
+              senderId: row.user,
+            });
           });
 
           resolve(messages);
