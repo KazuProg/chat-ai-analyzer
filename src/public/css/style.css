@@ -92,6 +92,10 @@ body {
     animation: fadeIn 0.3s ease-in;
 }
 
+.user-message {
+    flex-direction: row-reverse;
+}
+
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -116,6 +120,11 @@ body {
 }
 
 .user-message .message-avatar {
+    margin-right: 0;
+    margin-left: 12px;
+}
+
+.user-message .message-avatar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
@@ -128,6 +137,10 @@ body {
 .message-content {
     flex: 1;
     max-width: 80%;
+}
+
+.user-message .message-content {
+    max-width: 70%;
 }
 
 .message-text {
@@ -159,7 +172,7 @@ body {
 }
 
 .user-message .message-time {
-    text-align: left;
+    text-align: right;
 }
 
 /* Markdownコンテンツのスタイル */
@@ -477,6 +490,10 @@ body {
         max-width: 90%;
     }
 
+    .user-message .message-content {
+        max-width: 85%;
+    }
+
     .chat-input-container {
         padding: 0.5rem;
     }
@@ -520,6 +537,11 @@ body {
         width: 32px;
         height: 32px;
         margin-right: 8px;
+    }
+
+    .user-message .message-avatar {
+        margin-right: 0;
+        margin-left: 8px;
     }
 
     .message-text {
